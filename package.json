@@ -1,0 +1,48 @@
+{
+  "name": "glimpser",
+  "version": "0.0.1",
+  "description": "Lightweight browser environment inspector delivering raw or structured data effortlessly.",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build:types": "tsc -p tsconfig.build.json",
+    "build:esm": "esbuild src/index.ts --bundle --minify --format=esm --outfile=dist/index.mjs",
+    "build:cjs": "esbuild src/index.ts --bundle --minify --format=cjs --outfile=dist/index.cjs",
+    "build:bundle": "npm run build:esm && npm run build:cjs",
+    "build": "npm run clean && npm run build:types && npm run build:bundle",
+    "dev": "tsc --watch & esbuild src/index.ts --bundle --format=esm --outfile=dist/index.mjs --watch",
+    "publish:check": "npm run build && npm pack --dry-run",
+    "release": "npm run publish:check && npm publish --access public"
+  },
+  "keywords": [
+    "browser",
+    "client",
+    "environment",
+    "runtime",
+    "performance",
+    "monitoring",
+    "observability",
+    "telemetry",
+    "debugging",
+    "metrics",
+    "analytics",
+    "data"
+  ],
+  "author": "Santiago Ramos <santraez@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "0.25.5",
+    "typescript": "5.8.3"
+  }
+}
