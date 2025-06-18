@@ -1,14 +1,17 @@
 {
   "name": "glimpser",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Lightweight browser environment inspector delivering raw or structured data effortlessly.",
-  "types": "./dist/types/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.mjs"
-    }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -16,12 +19,9 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
-    "build:types": "tsc -p tsconfig.build.json",
-    "build:esm": "esbuild src/index.ts --bundle --minify --format=esm --outfile=dist/index.mjs",
-    "build:cjs": "esbuild src/index.ts --bundle --minify --format=cjs --outfile=dist/index.cjs",
-    "build:bundle": "npm run build:esm && npm run build:cjs",
-    "build": "npm run clean && npm run build:types && npm run build:bundle",
-    "dev": "tsc --watch & esbuild src/index.ts --bundle --format=esm --outfile=dist/index.mjs --watch",
+    "build:bundle": "esbuild src/index.ts --bundle --minify --format=esm --outfile=dist/index.js",
+    "build": "npm run clean && tsc && npm run build:bundle",
+    "dev": "tsc --watch & esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --watch",
     "publish:check": "npm run build && npm pack --dry-run",
     "release": "npm run publish:check && npm publish --access public"
   },
@@ -41,8 +41,17 @@
   ],
   "author": "Santiago Ramos <santraez@gmail.com>",
   "license": "MIT",
+  "type": "module",
   "devDependencies": {
     "esbuild": "0.25.5",
     "typescript": "5.8.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/santraez/glimpser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/santraez/glimpser/issues"
+  },
+  "homepage": "https://github.com/santraez/glimpser#readme"
 }

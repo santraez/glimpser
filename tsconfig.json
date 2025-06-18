@@ -4,8 +4,11 @@
     "lib": ["DOM", "ES2022"],
     "module": "ESNext",
     "moduleResolution": "Node",
-    "types": [],
     "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "emitDeclarationOnly": false,
+    "removeComments": true,
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -14,11 +17,11 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noImplicitAny": true,
-    "resolveJsonModule": true,
-    "allowJs": false,
     "strictNullChecks": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "allowJs": false,
+    "types": []
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
