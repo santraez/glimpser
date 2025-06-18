@@ -1,42 +1,60 @@
-export type ExtendedNavigator = {
-  -readonly [K in keyof Navigator]: unknown
-}
-
 export type BrowserData = {
+  closed: boolean
+  crypto: Partial<ExtendedCrypto>,
   navigator: Partial<ExtendedNavigator>
 }
 
+export type ExtendedCrypto = {
+  [K in keyof Crypto]: unknown
+}
+
+export type ExtendedNavigator = {
+  [K in keyof Navigator]: unknown
+}
+
 export class Glimpser {
+  private readonly window: Window & typeof globalThis
+
   private data: BrowserData = {
+    closed: false,
+    crypto: {},
     navigator: {}
   }
 
-  public collect(): BrowserData {
-    this.data.navigator = this.getNavigatorData()
+  constructor() {
+    if (typeof window === 'undefined') {
+      throw new Error('[Glimpser] Incompatible environment: "window" is not defined.')
+    }
+
+    this.window = window
+  }
+
+  public getRaw(): BrowserData {
+    this.data.closed = this.closed
+    this.data.crypto = this.crypto
+    this.data.navigator = this.navigator
 
     return this.data
   }
 
-  public getRaw(): unknown {
+  get closed(): boolean {
+    return this.window.closed
+  }
+
+  get crypto(): Partial<ExtendedCrypto> {
     return {
-      navigator: window.navigator
+      getRandomValues: Array.from(this.window.crypto.getRandomValues(new Uint32Array(10))),
+      randomUUID: this.window.crypto.randomUUID()
     }
   }
 
-  private getNavigatorData(): Partial<ExtendedNavigator> {
-    const result: Partial<ExtendedNavigator> = {}
-    
-    for (const key in window.navigator) {
-      try {
-        // @ts-expect-error: dynamic key access
-        result[key] = window.navigator[key]
-      } catch {
-        // @ts-expect-error: some properties may throw errors when accessed
-        result[key] = undefined
-      }
+  get navigator(): Partial<ExtendedNavigator> {
+    return {
+      appName: this.window.navigator.appName,
+      appVersion: this.window.navigator.appVersion,
+      platform: this.window.navigator.platform,
+      userAgent: this.window.navigator.userAgent
     }
-    
-    return result
   }
 }
 
