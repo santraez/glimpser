@@ -1,10 +1,11 @@
 {
   "name": "glimpser",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Lightweight browser environment inspector delivering raw or structured data effortlessly.",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -41,11 +42,6 @@
   ],
   "author": "Santiago Ramos <santraez@gmail.com>",
   "license": "MIT",
-  "type": "module",
-  "devDependencies": {
-    "esbuild": "0.25.5",
-    "typescript": "5.8.3"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/santraez/glimpser.git"
@@ -53,5 +49,9 @@
   "bugs": {
     "url": "https://github.com/santraez/glimpser/issues"
   },
-  "homepage": "https://github.com/santraez/glimpser#readme"
+  "homepage": "https://github.com/santraez/glimpser#readme",
+  "devDependencies": {
+    "esbuild": "0.25.5",
+    "typescript": "5.8.3"
+  }
 }
