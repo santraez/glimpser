@@ -7,7 +7,7 @@ export interface WindowData {
   isSecureContext?: boolean
   location: LocationData
   name?: string
-  navigator: Partial<ExtendedNavigator>
+  navigator: NavigatorData
   outerHeight?: number
   outerWidth?: number
   performance: PerformanceData
@@ -37,8 +37,23 @@ export interface LocationData {
   search?: Record<string, string>
 }
 
-export type ExtendedNavigator = {
-  [K in keyof Navigator]: unknown
+export interface NavigatorData {
+  connection?: Connection
+  cookieEnabled?: boolean
+  deviceMemory?: number
+  getBattery?: GetBattery
+  hardwareConcurrency?: number
+  language?: string
+  languages?: string[]
+  maxTouchPoints?: number
+  onLine?: boolean
+  pdfViewerEnabled?: boolean
+  platform?: string
+  userActivation?: boolean
+  userAgent?: string
+  userAgentData?: UserAgentData
+  vendor?: string
+  webdriver?: boolean
 }
 
 export interface PerformanceData {
@@ -53,3 +68,26 @@ export interface ScreenData {
   orientation?: OrientationType
   width?: number
 }
+
+export interface Connection {
+  downlink?: number
+  effectiveType?: 'slow-2g' | '2g' | '3g' | '4g'
+  rtt?: number
+  saveData?: boolean
+  type?: 'bluetooth' | 'cellular' | 'ethernet' | 'none' | 'wifi' | 'wimax' | 'other' | 'unknown'
+}
+
+export interface GetBattery{
+  charging?: boolean
+  chargingTime?: number
+  dischargingTime?: number
+  level?: number
+}
+
+export interface UserAgentData {
+  brands?: Record<string, string>[]
+  mobile?: boolean
+  platform?: string
+}
+
+export type BrowserType = 'chrome' | 'firefox' | 'safari' | 'edge' | 'brave' | 'opera' | 'unknown'

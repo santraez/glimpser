@@ -1,14 +1,13 @@
 import type {
-  ExtendedNavigator,
-  WindowData,
-  DocumentData,
-  LocationData,
-  PerformanceData,
-  ScreenData
+  BrowserType,
+  NavigatorData,
+  WindowData
 } from './types/window-data'
 
 export default class Glimpser {
   private readonly window: Window & typeof globalThis
+  private readonly browser: BrowserType
+  private data: WindowData
 
   constructor() {
     if (typeof window === 'undefined') {
@@ -16,122 +15,140 @@ export default class Glimpser {
     }
 
     this.window = window
+    this.browser = this.detectBrowser()
+    this.data = this.captureSnapshot()
   }
 
-  get closed(): boolean {
-    return this.window.closed
+  public toJSON(): WindowData {
+    return this.data
   }
 
-  get devicePixelRatio(): number {
-    return this.window.devicePixelRatio
+  public collect<K extends keyof WindowData>(key: K): WindowData[K] {
+    return this.data[key]
   }
 
-  get document(): DocumentData {
-    return {
-      characterSet: this.window.document.characterSet,
-      compatMode: this.window.document.compatMode,
-      contentType: this.window.document.contentType,
-      dir: this.window.document.dir,
-      fullscreenEnabled: this.window.document.fullscreenEnabled,
-      hasFocus: this.window.document.hasFocus(),
-      hidden: this.window.document.hidden,
-      readyState: this.window.document.readyState,
-      referrer: this.window.document.referrer,
-      title: this.window.document.title,
-      visibilityState: this.window.document.visibilityState
+  public refresh(): void {
+    this.data = this.captureSnapshot()
+  }
+
+  public async getBattery(): Promise<void> {
+    if (this.browser === 'firefox' || this.browser === 'safari') return
+
+    const b = await this.window.navigator.getBattery()
+
+    this.data.navigator.getBattery = {
+      charging: b.charging,
+      chargingTime: b.chargingTime,
+      dischargingTime: b.dischargingTime,
+      level: b.level
     }
   }
 
-  get innerHeight(): number {
-    return this.window.innerHeight
-  }
+  private captureSnapshot(): WindowData {
+    const d = this.window.document
+    const l = this.window.location
+    const n = this.window.navigator
+    const p = this.window.performance
+    const s = this.window.screen
 
-  get innerWidth(): number {
-    return this.window.innerWidth
-  }
+    const navigatorData: NavigatorData = {
+      cookieEnabled: n.cookieEnabled,
+      hardwareConcurrency: n.hardwareConcurrency,
+      language: n.language,
+      languages: [...n.languages],
+      maxTouchPoints: n.maxTouchPoints,
+      onLine: n.onLine,
+      pdfViewerEnabled: n.pdfViewerEnabled,
+      platform: n.platform,
+      userActivation: n.userActivation.hasBeenActive,
+      userAgent: n.userAgent,
+      vendor: n.vendor,
+      webdriver: n.webdriver
+    }
 
-  get isSecureContext(): boolean {
-    return this.window.isSecureContext
-  }
+    if (this.browser !== 'firefox' && this.browser !== 'safari') {
+      if (this.browser !== 'brave') {
+        navigatorData.connection = {
+          downlink: n.connection?.downlink,
+          effectiveType: n.connection?.effectiveType,
+          rtt: n.connection?.rtt,
+          saveData: n.connection?.saveData,
+          type: n.connection?.type
+        }
+      }
 
-  get location(): LocationData {
+      navigatorData.deviceMemory = n.deviceMemory,
+      navigatorData.userAgentData = {
+        brands: n.userAgentData?.brands,
+        mobile: n.userAgentData?.mobile,
+        platform: n.userAgentData?.platform
+      }
+    }
+
     return {
-      hash: this.window.location.hash.replace(/^#/, ''),
-      origin: this.window.location.origin,
-      pathname: this.window.location.pathname,
-      search: Object.fromEntries(new URLSearchParams(this.window.location.search))
+      closed: this.window.closed,
+      devicePixelRatio: this.window.devicePixelRatio,
+      document: {
+        characterSet: d.characterSet,
+        compatMode: d.compatMode,
+        contentType: d.contentType,
+        dir: d.dir,
+        fullscreenEnabled: d.fullscreenEnabled,
+        hasFocus: d.hasFocus(),
+        hidden: d.hidden,
+        readyState: d.readyState,
+        referrer: d.referrer,
+        title: d.title,
+        visibilityState: d.visibilityState
+      },
+      innerHeight: this.window.innerHeight,
+      innerWidth: this.window.innerWidth,
+      isSecureContext: this.window.isSecureContext,
+      location: {
+        hash: l.hash.replace(/^#/, ''),
+        origin: l.origin,
+        pathname: l.pathname,
+        search: Object.fromEntries(new URLSearchParams(l.search))
+      },
+      name: this.window.name,
+      navigator: navigatorData,
+      outerHeight: this.window.outerHeight,
+      outerWidth: this.window.outerWidth,
+      performance: {
+        now: p.now(),
+        timeOrigin: p.timeOrigin
+      },
+      screen: {
+        availHeight: s.availHeight,
+        availWidth: s.availWidth,
+        height: s.height,
+        orientation: s.orientation.type,
+        width: s.width
+      },
+      scrollX: this.window.scrollX,
+      scrollY: this.window.scrollY
     }
   }
 
-  get name(): string {
-    return this.window.name
-  }
+  private detectBrowser(): BrowserType {
+    const w = this.window as any
+    const n = this.window.navigator as any
 
-  get navigator(): Partial<ExtendedNavigator> {
-    return {
-      
+    if ('InstallTrigger' in w) return 'firefox'
+
+    if ('safari' in w || /apple/i.test(n.vendor)) {
+      if (!('chrome' in w)) return 'safari'
     }
-  }
 
-  get outerHeight(): number {
-    return this.window.outerHeight
-  }
+    if (n.userAgent.includes('Edg')) return 'edge'
 
-  get outerWidth(): number {
-    return this.window.outerWidth
-  }
+    if (n.userAgent.includes('OPR') || n.userAgent.includes('Opera')) return 'opera'
 
-  get performance(): PerformanceData {
-    return {
-      now: this.window.performance.now(),
-      timeOrigin: this.window.performance.timeOrigin,
-    }
-  }
+    if (typeof n.brave?.isBrave === 'function') return 'brave'
 
-  get screen(): ScreenData {
-    return {
-      availHeight: this.window.screen.availHeight,
-      availWidth: this.window.screen.availWidth,
-      height: this.window.screen.height,
-      orientation: this.window.screen.orientation?.type,
-      width: this.window.screen.width,
-    }
-  }
+    if ('userAgentData' in n || 'chrome' in w) return 'chrome'
 
-  get scrollX(): number {
-    return this.window.scrollX
-  }
-
-  get scrollY(): number {
-    return this.window.scrollY
-  }
-
-  get all(): WindowData {
-    return {
-      closed: this.closed,
-      devicePixelRatio: this.devicePixelRatio,
-      document: this.document,
-      innerHeight: this.innerHeight,
-      innerWidth: this.innerWidth,
-      isSecureContext: this.isSecureContext,
-      location: this.location,
-      name: this.name,
-      navigator: this.navigator,
-      outerHeight: this.outerHeight,
-      outerWidth: this.outerWidth,
-      performance: this.performance,
-      screen: this.screen,
-      scrollX: this.scrollX,
-      scrollY: this.scrollY
-    }
-  }
-
-  collect<K extends keyof WindowData>(key: K): WindowData[K] {
-    return this[key]
-  }
-
-  toJSON(): WindowData {
-    return this.all
+    return 'unknown'
   }
 }
 
