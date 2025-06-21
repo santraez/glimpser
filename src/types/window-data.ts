@@ -91,3 +91,7 @@ export interface UserAgentData {
 }
 
 export type BrowserType = 'chrome' | 'firefox' | 'safari' | 'edge' | 'brave' | 'opera' | 'unknown'
+
+export type OsType = 'windows' | 'macos' | 'linux' | 'android' | 'ios' | 'ipados' | 'chromeos' | 'unknown'
+
+export type DeviceType = 'desktop' | 'mobile' | 'tablet' | 'unknown'
