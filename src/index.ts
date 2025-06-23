@@ -45,6 +45,12 @@ export default class Glimpser {
   }
 
   public async getContext(): Promise<any> {
+    this.refresh()
+
+    if (typeof this.window.navigator?.getBattery !== 'function') {
+      console.warn('[Glimpser] Battery API is not supported in this browser.')
+    }
+    
     const d = this.data
 
     const n = d.navigator
@@ -64,7 +70,7 @@ export default class Glimpser {
         n?.getBattery?.charging,
         n?.getBattery?.chargingTime,
         n?.getBattery?.dischargingTime
-      ].filter(s => typeof s !== 'undefined')
+      ].filter(value => typeof value !== 'undefined')
     }
 
     const browser = {
@@ -78,7 +84,7 @@ export default class Glimpser {
       n?.connection?.downlink,
       n?.connection?.rtt,
       n?.connection?.saveData
-    ].filter(s => typeof s !== 'undefined')
+    ].filter(value => typeof value !== 'undefined')
     
     const screen = {
       height: [
@@ -104,12 +110,18 @@ export default class Glimpser {
       ]
     }
 
+    const session = {
+      duration: d?.performance?.now,
+      startAt: d?.performance?.timeOrigin
+    }
+
     return {
       os,
       device,
       browser,
       connection,
-      screen
+      screen,
+      session
     }
   }
 
@@ -266,8 +278,8 @@ export default class Glimpser {
       outerHeight: w.outerHeight,
       outerWidth: w.outerWidth,
       performance: {
-        now: p?.now(),
-        timeOrigin: p?.timeOrigin
+        now: Math.floor(p?.now()),
+        timeOrigin: Math.floor(p?.timeOrigin)
       },
       screen: {
         availHeight: s?.availHeight,
