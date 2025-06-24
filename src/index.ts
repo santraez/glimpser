@@ -1,16 +1,17 @@
+import type { WindowData } from './types/window-data'
 import type {
-  BrowserType,
-  DeviceType,
+  ContextData,
   OsType,
-  WindowData
-} from './types/window-data'
+  DeviceType,
+  BrowserType
+} from './types/context-data'
 
 export default class Glimpser {
   private readonly window: Window & typeof globalThis
-  private data: WindowData
   private readonly os: OsType
   private readonly device: DeviceType
   private readonly browser: BrowserType
+  private data!: WindowData
 
   constructor() {
     if (typeof window === 'undefined') {
@@ -18,13 +19,14 @@ export default class Glimpser {
     }
 
     this.window = window
-    this.data = this.captureSnapshot()
     this.os = this.detectOs()
     this.device = this.detectDevice()
     this.browser = this.detectBrowser()
   }
 
   public toJSON(): Readonly<WindowData> {
+    this.captureSnapshot()
+
     if (typeof structuredClone === 'function') {
       return structuredClone(this.data)
     }
@@ -33,6 +35,8 @@ export default class Glimpser {
   }
 
   public collect<K extends keyof WindowData>(key: K): Readonly<WindowData[K]> {
+    this.captureSnapshot()
+
     if (typeof structuredClone === 'function') {
       return structuredClone(this.data[key])
     }
@@ -40,73 +44,58 @@ export default class Glimpser {
     return JSON.parse(JSON.stringify(this.data[key])) as Readonly<WindowData[K]>
   }
 
-  public refresh(): void {
-    this.data = this.captureSnapshot()
-  }
+  public async getContext(): Promise<ContextData> {
+    this.captureSnapshot()
 
-  public async getContext(): Promise<any> {
-    this.refresh()
-
-    if (typeof this.window.navigator?.getBattery !== 'function') {
-      console.warn('[Glimpser] Battery API is not supported in this browser.')
-    }
-    
     const d = this.data
 
+    const doc = d.document
+    const l = d.location
     const n = d.navigator
     const s = d.screen
 
-    await this.getBattery()
-
-    const os = {
+    const os: ContextData['os'] = {
       name: this.os,
       theme: this.window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     }
 
-    const device = {
-      type: this.device,
-      battery: [
-        n?.getBattery?.level,
-        n?.getBattery?.charging,
-        n?.getBattery?.chargingTime,
-        n?.getBattery?.dischargingTime
-      ].filter(value => typeof value !== 'undefined')
+    const device: ContextData['device'] = {
+      type: this.device
     }
 
-    const browser = {
+    if (n?.deviceMemory) {
+      const ram = n.deviceMemory
+
+      if (ram <= 0.5) device.memory = 'very-low'
+      if (ram <= 2) device.memory = 'low'
+      if (ram <= 4) device.memory = 'medium'
+
+      device.memory = 'high'       
+    }
+
+    await this.getBattery()
+
+    if (n?.getBattery) {
+      device.battery = [
+        n.getBattery?.level,
+        n.getBattery?.charging,
+        n.getBattery?.chargingTime,
+        n.getBattery?.dischargingTime
+      ]
+    }
+
+    const browser: ContextData['browser'] = {
+      language: n?.language ?? n?.languages?.[0],
       name: this.browser,
-      language: n?.language ?? n?.languages?.[0]
+      onLine: n?.onLine
     }
-
-    const connection = [
-      n?.onLine,
-      n?.connection?.effectiveType,
-      n?.connection?.downlink,
-      n?.connection?.rtt,
-      n?.connection?.saveData
-    ].filter(value => typeof value !== 'undefined')
     
-    const screen = {
-      height: [
-        s?.height,
-        s?.availHeight,
-        d?.outerHeight,
-        d?.innerHeight
-      ],
-      orientation: s.orientation === 'landscape-primary'
-        ? 1
-        : s.orientation === 'landscape-secondary'
-          ? -1
-          : s.orientation === 'portrait-primary'
-            ? 2
-            : s.orientation === 'portrait-secondary'
-              ? -2
-              : 0,
-      width: [
-        s?.width,
-        s?.availWidth,
-        d?.outerWidth,
-        d?.innerWidth
+    if (n?.connection) {
+      browser.connection = [
+        n.connection?.effectiveType,
+        n.connection?.downlink,
+        n.connection?.rtt,
+        n.connection?.saveData
       ]
     }
 
@@ -115,26 +104,64 @@ export default class Glimpser {
       startAt: d?.performance?.timeOrigin
     }
 
+    const document = {
+      domain: l?.origin?.split('//')[1].split('/')[0],
+      referrer: doc?.referrer,
+      title: doc?.title,
+      viewing: doc?.visibilityState === 'visible' && doc?.hasFocus
+    }
+    
+    const screen: ContextData['screen'] = {
+      height: [
+        s?.height,
+        s?.availHeight,
+        d?.outerHeight,
+        d?.innerHeight
+      ],
+      width: [
+        s?.width,
+        s?.availWidth,
+        d?.outerWidth,
+        d?.innerWidth
+      ]
+    }
+
+    switch (s.orientation) {
+      case 'landscape-primary':
+        screen.orientation = 1
+        break
+      case 'landscape-secondary':
+        screen.orientation = -1
+        break
+      case 'portrait-primary':
+        screen.orientation = 2
+        break
+      case 'portrait-secondary':
+        screen.orientation = -2
+    }
+
     return {
       os,
       device,
       browser,
-      connection,
-      screen,
-      session
+      session,
+      document,
+      screen
     }
   }
 
-  private async getBattery(): Promise<void> {
-    if (this.browser === 'firefox' || this.browser === 'safari') return
+  public async getBattery(): Promise<void> {
+    if (typeof this.window.navigator.getBattery === 'function') {
+      const battery = await this.window.navigator?.getBattery()
 
-    const b = await this.window.navigator?.getBattery()
-
-    this.data.navigator.getBattery = {
-      charging: b?.charging,
-      chargingTime: b?.chargingTime,
-      dischargingTime: b?.dischargingTime,
-      level: b?.level
+      this.data.navigator.getBattery = {
+        charging: battery?.charging,
+        chargingTime: battery?.chargingTime,
+        dischargingTime: battery?.dischargingTime,
+        level: battery?.level
+      }
+    } else {
+      console.warn('[Glimpser] getBattery method is not supported in this browser.')
     }
   }
 
@@ -213,30 +240,30 @@ export default class Glimpser {
     return 'unknown'
   }
 
-  private captureSnapshot(): WindowData {
+  private captureSnapshot(): void {
     const w = this.window
 
-    const d = w.document
+    const doc = w.document
     const l = w.location
     const n = w.navigator
     const p = w.performance
     const s = w.screen
 
-    return {
+    const data: WindowData = {
       closed: w.closed,
       devicePixelRatio: w.devicePixelRatio,
       document: {
-        characterSet: d?.characterSet,
-        compatMode: d?.compatMode,
-        contentType: d?.contentType,
-        dir: d?.dir,
-        fullscreenEnabled: d?.fullscreenEnabled,
-        hasFocus: d?.hasFocus(),
-        hidden: d?.hidden,
-        readyState: d?.readyState,
-        referrer: d?.referrer,
-        title: d?.title,
-        visibilityState: d?.visibilityState
+        characterSet: doc?.characterSet,
+        compatMode: doc?.compatMode,
+        contentType: doc?.contentType,
+        dir: doc?.dir,
+        fullscreenEnabled: doc?.fullscreenEnabled,
+        hasFocus: doc?.hasFocus(),
+        hidden: doc?.hidden,
+        readyState: doc?.readyState,
+        referrer: doc?.referrer,
+        title: doc?.title,
+        visibilityState: doc?.visibilityState
       },
       innerHeight: w.innerHeight,
       innerWidth: w.innerWidth,
@@ -249,15 +276,7 @@ export default class Glimpser {
       },
       name: w.name,
       navigator: {
-        connection: {
-          downlink: n?.connection?.downlink,
-          effectiveType: n?.connection?.effectiveType,
-          rtt: n?.connection?.rtt,
-          saveData: n?.connection?.saveData,
-          type: n?.connection?.type
-        },
         cookieEnabled: n?.cookieEnabled,
-        deviceMemory: n?.deviceMemory,
         hardwareConcurrency: n?.hardwareConcurrency,
         language: n?.language,
         languages: [...(n?.languages ?? [])],
@@ -267,11 +286,6 @@ export default class Glimpser {
         platform: n?.platform,
         userActivation: n?.userActivation?.hasBeenActive,
         userAgent: n?.userAgent,
-        userAgentData: {
-          brands: n?.userAgentData?.brands,
-          mobile: n?.userAgentData?.mobile,
-          platform: n?.userAgentData?.platform
-        },
         vendor: n?.vendor,
         webdriver: n?.webdriver
       },
@@ -291,5 +305,34 @@ export default class Glimpser {
       scrollX: w.scrollX,
       scrollY: w.scrollY
     }
+
+    if (typeof n.connection !== 'undefined') {
+      data.navigator.connection = {
+        downlink: n.connection?.downlink,
+        effectiveType: n.connection?.effectiveType,
+        rtt: n.connection?.rtt,
+        saveData: n.connection?.saveData
+      }
+    } else {
+      console.warn('[Glimpser] connection property is not supported in this browser.')
+    }
+
+    if (typeof n.deviceMemory !== 'undefined') {
+      data.navigator.deviceMemory = n.deviceMemory
+    } else {
+      console.warn('[Glimpser] deviceMemory property is not supported in this browser.')
+    }
+
+    if (typeof n.userAgentData !== 'undefined') {
+      data.navigator.userAgentData = {
+        brands: n.userAgentData?.brands,
+        mobile: n.userAgentData?.mobile,
+        platform: n.userAgentData?.platform
+      }
+    } else {
+      console.warn('[Glimpser] userAgentData property is not supported in this browser.')
+    }
+
+    this.data = data
   }
 }

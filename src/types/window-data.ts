@@ -77,7 +77,7 @@ export interface Connection {
   type?: 'bluetooth' | 'cellular' | 'ethernet' | 'none' | 'wifi' | 'wimax' | 'other' | 'unknown'
 }
 
-export interface GetBattery{
+export interface GetBattery {
   charging?: boolean
   chargingTime?: number
   dischargingTime?: number
@@ -89,9 +89,3 @@ export interface UserAgentData {
   mobile?: boolean
   platform?: string
 }
-
-export type BrowserType = 'chrome' | 'firefox' | 'safari' | 'edge' | 'brave' | 'opera' | 'unknown'
-
-export type OsType = 'windows' | 'macos' | 'linux' | 'android' | 'ios' | 'ipados' | 'chromeos' | 'unknown'
-
-export type DeviceType = 'desktop' | 'mobile' | 'tablet' | 'unknown'
