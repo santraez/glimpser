@@ -25,6 +25,19 @@ export interface ContextData {
     startAt?: number
   }
 
+  user?: {
+    city?: string
+    continent?: string
+    country?: string
+    ipAddress?: string
+    latitude?: string
+    longitude?: string
+    postalCode?: string
+    region?: string
+    regionCode?: string
+    timezone?: string
+  }
+
   document: {
     domain?: string
     referrer?: string
@@ -36,6 +49,28 @@ export interface ContextData {
     height: (number | undefined)[]
     orientation?: number
     width: (number | undefined)[]
+  }
+}
+
+export interface WorkerData {
+  cf: {
+    city?: string
+    continent?: string
+    country?: string
+    isEUCountry?: boolean
+    latitude?: string
+    longitude?: string
+    postalCode?: string
+    region?: string
+    regionCode?: string
+    timezone?: string
+  }
+
+  headers: {
+    'cf-connecting-ip'?: string
+    'cf-ipcountry'?: string
+    'user-agent'?: string
+    'x-real-ip'?: string
   }
 }
 

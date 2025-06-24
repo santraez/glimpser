@@ -3,7 +3,8 @@ import type {
   ContextData,
   OsType,
   DeviceType,
-  BrowserType
+  BrowserType,
+  WorkerData
 } from './types/context-data'
 
 export default class Glimpser {
@@ -255,7 +256,7 @@ export default class Glimpser {
         screen.orientation = -2
     }
 
-    return {
+    const data: ContextData = {
       os,
       device,
       browser,
@@ -263,6 +264,25 @@ export default class Glimpser {
       document,
       screen
     }
+
+    const workerData = await this.getWorkerData()
+
+    if (!!workerData) {
+      data.user = {
+        city: workerData.cf?.city || workerData.headers?.['cf-ipcountry'],
+        continent: workerData.cf?.continent,
+        country: workerData.cf?.country,
+        ipAddress: workerData.headers?.['x-real-ip'] || workerData.headers?.['cf-connecting-ip'],
+        latitude: workerData.cf?.latitude,
+        longitude: workerData.cf?.longitude,
+        postalCode: workerData.cf?.postalCode,
+        region: workerData.cf?.region,
+        regionCode: workerData.cf?.regionCode,
+        timezone: workerData.cf?.timezone
+      }
+    }
+
+    return data
   }
 
   public toJSON() {
@@ -344,6 +364,23 @@ export default class Glimpser {
     return 'unknown'
   }
 
+  private isLegacyBrowser(): boolean {
+    const tests: [string, boolean][] = [
+      ['fetch', 'fetch' in window],
+      ['Promise', 'Promise' in window],
+      ['IntersectionObserver', 'IntersectionObserver' in window],
+      ['ResizeObserver', 'ResizeObserver' in window],
+      ['customElements', 'customElements' in window],
+      ['Intl', 'Intl' in window],
+      ['URLSearchParams', 'URLSearchParams' in window],
+      ['CSS1Compat mode', document.compatMode === 'CSS1Compat']
+    ]
+
+    const failedTests = tests.filter(([_, passed]) => !passed)
+
+    return failedTests.length >= 2
+  }
+
   private async getBattery() {
     if (typeof this.window.navigator.getBattery === 'function') {
       const battery = await this.window.navigator?.getBattery()
@@ -361,20 +398,21 @@ export default class Glimpser {
     return undefined
   }
 
-  private isLegacyBrowser(): boolean {
-    const tests: [string, boolean][] = [
-      ['fetch', 'fetch' in window],
-      ['Promise', 'Promise' in window],
-      ['IntersectionObserver', 'IntersectionObserver' in window],
-      ['ResizeObserver', 'ResizeObserver' in window],
-      ['customElements', 'customElements' in window],
-      ['Intl', 'Intl' in window],
-      ['URLSearchParams', 'URLSearchParams' in window],
-      ['CSS1Compat mode', document.compatMode === 'CSS1Compat']
-    ]
+  private async getWorkerData(): Promise<WorkerData | undefined> {
+    try {
+      const response = await fetch('https://glimpser.santraez.workers.dev', {
+        headers: {
+          'x-glimpser-token': ',8y&(]h1Kq8N+{[,n*PKqIWKCRsotugvYzGp#]T,(?meHva>h(SH@3r|LvU)#zNR'
+        }
+      })
 
-    const failedTests = tests.filter(([_, passed]) => !passed)
+      const data = await response.json() as WorkerData
+      
+      return data
+    } catch (error) {
+      console.warn('[Glimpser] Error fetching worker data.')
+    }
 
-    return failedTests.length >= 2
+    return undefined
   }
 }
