@@ -8,7 +8,7 @@ export interface ContextData {
 
   device: {
     battery?: (number | boolean | undefined)[]
-    memory?: 'very-low' | 'low' | 'medium' | 'high'       
+    memory?: 'very-low' | 'low' | 'medium' | 'high'
     type: DeviceType
   }
 

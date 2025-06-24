@@ -8,10 +8,10 @@ import type {
 
 export default class Glimpser {
   private readonly window: Window & typeof globalThis
+  
   private readonly os: OsType
   private readonly device: DeviceType
   private readonly browser: BrowserType
-  private data!: WindowData
 
   constructor() {
     if (typeof window === 'undefined') {
@@ -19,40 +19,154 @@ export default class Glimpser {
     }
 
     this.window = window
+
     this.os = this.detectOs()
     this.device = this.detectDevice()
     this.browser = this.detectBrowser()
   }
 
-  public toJSON(): Readonly<WindowData> {
-    this.captureSnapshot()
+  public collect<K extends keyof WindowData>(key?: K): Readonly<WindowData | WindowData[K]> {
+    const w = this.window
 
-    if (typeof structuredClone === 'function') {
-      return structuredClone(this.data)
+    const d = w.document
+    const l = w.location
+    const n = w.navigator
+    const p = w.performance
+    const s = w.screen
+
+    const _closed = () => w.closed
+
+    const _devicePixelRatio = () => w.devicePixelRatio
+
+    const _document = () => ({
+      characterSet: d?.characterSet,
+      compatMode: d?.compatMode,
+      contentType: d?.contentType,
+      dir: d?.dir,
+      fullscreenEnabled: d?.fullscreenEnabled,
+      hasFocus: d?.hasFocus(),
+      hidden: d?.hidden,
+      readyState: d?.readyState,
+      referrer: d?.referrer,
+      title: d?.title,
+      visibilityState: d?.visibilityState
+    })
+
+    const _innerHeight = () => w.innerHeight
+
+    const _innerWidth = () => w.innerWidth
+
+    const _isSecureContext = () => w.isSecureContext
+
+    const _location = () => ({
+      hash: (l?.hash ?? '').replace(/^#/, ''),
+      origin: l?.origin,
+      pathname: l?.pathname,
+      search: Object.fromEntries(new URLSearchParams(l?.search ?? ''))
+    })
+
+    const _name = () => w.name
+
+    const _navigator = () => {
+      const navigatorData: WindowData['navigator'] = {
+        cookieEnabled: n?.cookieEnabled,
+        hardwareConcurrency: n?.hardwareConcurrency,
+        language: n?.language,
+        languages: [...(n?.languages ?? [])],
+        maxTouchPoints: n?.maxTouchPoints,
+        onLine: n?.onLine,
+        pdfViewerEnabled: n?.pdfViewerEnabled,
+        platform: n?.platform,
+        userActivation: n?.userActivation?.hasBeenActive,
+        userAgent: n?.userAgent,
+        vendor: n?.vendor,
+        webdriver: n?.webdriver
+      }
+
+      if (typeof n.connection !== 'undefined') {
+        navigatorData.connection = {
+          downlink: n.connection?.downlink,
+          effectiveType: n.connection?.effectiveType,
+          rtt: n.connection?.rtt,
+          saveData: n.connection?.saveData
+        }
+      } else {
+        console.warn('[Glimpser] connection property is not supported in this browser.')
+      }
+
+      if (typeof n.deviceMemory !== 'undefined') {
+        navigatorData.deviceMemory = n.deviceMemory
+      } else {
+        console.warn('[Glimpser] deviceMemory property is not supported in this browser.')
+      }
+
+      if (typeof n.userAgentData !== 'undefined') {
+        navigatorData.userAgentData = {
+          brands: n.userAgentData?.brands,
+          mobile: n.userAgentData?.mobile,
+          platform: n.userAgentData?.platform
+        }
+      } else {
+        console.warn('[Glimpser] userAgentData property is not supported in this browser.')
+      }
+
+      return navigatorData
     }
 
-    return JSON.parse(JSON.stringify(this.data)) as Readonly<WindowData>
-  }
+    const _outerHeight = () => w.outerHeight
 
-  public collect<K extends keyof WindowData>(key: K): Readonly<WindowData[K]> {
-    this.captureSnapshot()
+    const _outerWidth = () => w.outerWidth
 
-    if (typeof structuredClone === 'function') {
-      return structuredClone(this.data[key])
+    const _performance = () => ({
+      now: Math.floor(p?.now()),
+      timeOrigin: Math.floor(p?.timeOrigin)
+    })
+
+    const _screen = () => ({
+      availHeight: s?.availHeight,
+      availWidth: s?.availWidth,
+      height: s?.height,
+      orientation: s?.orientation?.type,
+      width: s?.width
+    })
+
+    const _scrollX = () => w.scrollX
+
+    const _scrollY = () => w.scrollY
+
+    const data = {
+      closed: _closed,
+      devicePixelRatio: _devicePixelRatio,
+      document: _document,
+      innerHeight: _innerHeight,
+      innerWidth: _innerWidth,
+      isSecureContext: _isSecureContext,
+      location: _location,
+      name: _name,
+      navigator: _navigator,
+      outerHeight: _outerHeight,
+      outerWidth: _outerWidth,
+      performance: _performance,
+      screen: _screen,
+      scrollX: _scrollX,
+      scrollY: _scrollY
     }
 
-    return JSON.parse(JSON.stringify(this.data[key])) as Readonly<WindowData[K]>
+    if (!!key && key in data) {
+      return data[key]() as WindowData[K]
+    }
+
+    return Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [k, v()])
+    ) as unknown as WindowData
   }
 
   public async getContext(): Promise<ContextData> {
-    this.captureSnapshot()
-
-    const d = this.data
-
-    const doc = d.document
-    const l = d.location
-    const n = d.navigator
-    const s = d.screen
+    const d = this.collect('document') as WindowData['document']
+    const l = this.collect('location') as WindowData['location']
+    const n = this.collect('navigator') as WindowData['navigator']
+    const p = this.collect('performance') as WindowData['performance']
+    const s = this.collect('screen') as WindowData['screen']
 
     const os: ContextData['os'] = {
       name: this.os,
@@ -63,7 +177,7 @@ export default class Glimpser {
       type: this.device
     }
 
-    if (n?.deviceMemory) {
+    if (!!n?.deviceMemory) {
       const ram = n.deviceMemory
 
       if (ram <= 0.5) device.memory = 'very-low'
@@ -73,14 +187,14 @@ export default class Glimpser {
       device.memory = 'high'       
     }
 
-    await this.getBattery()
+    const battery = await this.getBattery()
 
-    if (n?.getBattery) {
+    if (!!battery) {
       device.battery = [
-        n.getBattery?.level,
-        n.getBattery?.charging,
-        n.getBattery?.chargingTime,
-        n.getBattery?.dischargingTime
+        battery?.level,
+        battery?.charging,
+        battery?.chargingTime,
+        battery?.dischargingTime
       ]
     }
 
@@ -90,8 +204,8 @@ export default class Glimpser {
       name: this.browser,
       onLine: n?.onLine
     }
-    
-    if (n?.connection) {
+
+    if (!!n?.connection) {
       browser.connection = [
         n.connection?.effectiveType,
         n.connection?.downlink,
@@ -101,29 +215,29 @@ export default class Glimpser {
     }
 
     const session = {
-      duration: d?.performance?.now,
-      startAt: d?.performance?.timeOrigin
+      duration: p?.now,
+      startAt: p?.timeOrigin
     }
 
     const document = {
       domain: l?.origin?.split('//')[1].split('/')[0],
-      referrer: doc?.referrer,
-      title: doc?.title,
-      viewing: doc?.visibilityState === 'visible' && doc?.hasFocus
+      referrer: d?.referrer,
+      title: d?.title,
+      viewing: d?.visibilityState === 'visible' && d?.hasFocus
     }
-    
+
     const screen: ContextData['screen'] = {
       height: [
         s?.height,
         s?.availHeight,
-        d?.outerHeight,
-        d?.innerHeight
+        this.collect('outerHeight') as number,
+        this.collect('innerHeight') as number
       ],
       width: [
         s?.width,
         s?.availWidth,
-        d?.outerWidth,
-        d?.innerWidth
+        this.collect('outerWidth') as number,
+        this.collect('innerWidth') as number
       ]
     }
 
@@ -151,19 +265,8 @@ export default class Glimpser {
     }
   }
 
-  public async getBattery(): Promise<void> {
-    if (typeof this.window.navigator.getBattery === 'function') {
-      const battery = await this.window.navigator?.getBattery()
-
-      this.data.navigator.getBattery = {
-        charging: battery?.charging,
-        chargingTime: battery?.chargingTime,
-        dischargingTime: battery?.dischargingTime,
-        level: battery?.level
-      }
-    } else {
-      console.warn('[Glimpser] getBattery method is not supported in this browser.')
-    }
+  public toJSON() {
+    return this.collect()
   }
 
   private detectOs(): OsType {
@@ -241,6 +344,23 @@ export default class Glimpser {
     return 'unknown'
   }
 
+  private async getBattery() {
+    if (typeof this.window.navigator.getBattery === 'function') {
+      const battery = await this.window.navigator?.getBattery()
+
+      return {
+        charging: battery?.charging,
+        chargingTime: battery?.chargingTime,
+        dischargingTime: battery?.dischargingTime,
+        level: battery?.level
+      }
+    } else {
+      console.warn('[Glimpser] getBattery method is not supported in this browser.')
+    }
+
+    return undefined
+  }
+
   private isLegacyBrowser(): boolean {
     const tests: [string, boolean][] = [
       ['fetch', 'fetch' in window],
@@ -253,104 +373,8 @@ export default class Glimpser {
       ['CSS1Compat mode', document.compatMode === 'CSS1Compat']
     ]
 
-    const failedTests = tests.filter(([, passed]) => !passed)
+    const failedTests = tests.filter(([_, passed]) => !passed)
 
     return failedTests.length >= 2
-  }
-
-  private captureSnapshot(): void {
-    const w = this.window
-
-    const doc = w.document
-    const l = w.location
-    const n = w.navigator
-    const p = w.performance
-    const s = w.screen
-
-    const data: WindowData = {
-      closed: w.closed,
-      devicePixelRatio: w.devicePixelRatio,
-      document: {
-        characterSet: doc?.characterSet,
-        compatMode: doc?.compatMode,
-        contentType: doc?.contentType,
-        dir: doc?.dir,
-        fullscreenEnabled: doc?.fullscreenEnabled,
-        hasFocus: doc?.hasFocus(),
-        hidden: doc?.hidden,
-        readyState: doc?.readyState,
-        referrer: doc?.referrer,
-        title: doc?.title,
-        visibilityState: doc?.visibilityState
-      },
-      innerHeight: w.innerHeight,
-      innerWidth: w.innerWidth,
-      isSecureContext: w.isSecureContext,
-      location: {
-        hash: (l?.hash ?? '').replace(/^#/, ''),
-        origin: l?.origin,
-        pathname: l?.pathname,
-        search: Object.fromEntries(new URLSearchParams(l?.search ?? ''))
-      },
-      name: w.name,
-      navigator: {
-        cookieEnabled: n?.cookieEnabled,
-        hardwareConcurrency: n?.hardwareConcurrency,
-        language: n?.language,
-        languages: [...(n?.languages ?? [])],
-        maxTouchPoints: n?.maxTouchPoints,
-        onLine: n?.onLine,
-        pdfViewerEnabled: n?.pdfViewerEnabled,
-        platform: n?.platform,
-        userActivation: n?.userActivation?.hasBeenActive,
-        userAgent: n?.userAgent,
-        vendor: n?.vendor,
-        webdriver: n?.webdriver
-      },
-      outerHeight: w.outerHeight,
-      outerWidth: w.outerWidth,
-      performance: {
-        now: Math.floor(p?.now()),
-        timeOrigin: Math.floor(p?.timeOrigin)
-      },
-      screen: {
-        availHeight: s?.availHeight,
-        availWidth: s?.availWidth,
-        height: s?.height,
-        orientation: s?.orientation?.type,
-        width: s?.width
-      },
-      scrollX: w.scrollX,
-      scrollY: w.scrollY
-    }
-
-    if (typeof n.connection !== 'undefined') {
-      data.navigator.connection = {
-        downlink: n.connection?.downlink,
-        effectiveType: n.connection?.effectiveType,
-        rtt: n.connection?.rtt,
-        saveData: n.connection?.saveData
-      }
-    } else {
-      console.warn('[Glimpser] connection property is not supported in this browser.')
-    }
-
-    if (typeof n.deviceMemory !== 'undefined') {
-      data.navigator.deviceMemory = n.deviceMemory
-    } else {
-      console.warn('[Glimpser] deviceMemory property is not supported in this browser.')
-    }
-
-    if (typeof n.userAgentData !== 'undefined') {
-      data.navigator.userAgentData = {
-        brands: n.userAgentData?.brands,
-        mobile: n.userAgentData?.mobile,
-        platform: n.userAgentData?.platform
-      }
-    } else {
-      console.warn('[Glimpser] userAgentData property is not supported in this browser.')
-    }
-
-    this.data = data
   }
 }
