@@ -86,6 +86,7 @@ export default class Glimpser {
 
     const browser: ContextData['browser'] = {
       language: n?.language ?? n?.languages?.[0],
+      legacy: this.isLegacyBrowser(),
       name: this.browser,
       onLine: n?.onLine
     }
@@ -238,6 +239,23 @@ export default class Glimpser {
     if (isChrome) return 'chrome'
     
     return 'unknown'
+  }
+
+  private isLegacyBrowser(): boolean {
+    const tests: [string, boolean][] = [
+      ['fetch', 'fetch' in window],
+      ['Promise', 'Promise' in window],
+      ['IntersectionObserver', 'IntersectionObserver' in window],
+      ['ResizeObserver', 'ResizeObserver' in window],
+      ['customElements', 'customElements' in window],
+      ['Intl', 'Intl' in window],
+      ['URLSearchParams', 'URLSearchParams' in window],
+      ['CSS1Compat mode', document.compatMode === 'CSS1Compat']
+    ]
+
+    const failedTests = tests.filter(([, passed]) => !passed)
+
+    return failedTests.length >= 2
   }
 
   private captureSnapshot(): void {

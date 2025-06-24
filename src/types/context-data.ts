@@ -15,6 +15,7 @@ export interface ContextData {
   browser: {
     connection?: (boolean | number | Connection['effectiveType'] | undefined)[]
     language?: string
+    legacy: boolean
     name: BrowserType
     onLine?: boolean
   }
