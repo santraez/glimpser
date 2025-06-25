@@ -9,10 +9,11 @@ import type {
 
 export default class Glimpser {
   private readonly window: Window & typeof globalThis
-  
+
   private readonly os: OsType
   private readonly device: DeviceType
   private readonly browser: BrowserType
+  private _context: ContextData
 
   constructor() {
     if (typeof window === 'undefined') {
@@ -24,9 +25,14 @@ export default class Glimpser {
     this.os = this.detectOs()
     this.device = this.detectDevice()
     this.browser = this.detectBrowser()
+    this._context = this.getContext() as ContextData
   }
 
-  public collect<K extends keyof WindowData>(key?: K): Readonly<WindowData | WindowData[K]> {
+  get context(): Readonly<ContextData> {
+    return this._context
+  }
+
+  public collect<K extends keyof WindowData>(key: K): Readonly<WindowData[K]> {
     const w = this.window
 
     const d = w.document
@@ -153,140 +159,188 @@ export default class Glimpser {
       scrollY: _scrollY
     }
 
-    if (!!key && key in data) {
-      return data[key]() as WindowData[K]
-    }
-
-    return Object.fromEntries(
-      Object.entries(data).map(([k, v]) => [k, v()])
-    ) as unknown as WindowData
+    return data[key]() as WindowData[K]
   }
 
-  public async getContext(): Promise<ContextData> {
-    const d = this.collect('document') as WindowData['document']
-    const l = this.collect('location') as WindowData['location']
-    const n = this.collect('navigator') as WindowData['navigator']
-    const p = this.collect('performance') as WindowData['performance']
-    const s = this.collect('screen') as WindowData['screen']
+  public async addBatteryData(): Promise<void> {
+    if (typeof this.window.navigator.getBattery === 'function') {
+      const battery = await this.window.navigator?.getBattery()
 
-    const os: ContextData['os'] = {
-      name: this.os,
-      theme: this.window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-
-    const device: ContextData['device'] = {
-      type: this.device
-    }
-
-    if (!!n?.deviceMemory) {
-      const ram = n.deviceMemory
-
-      if (ram <= 0.5) device.memory = 'very-low'
-      if (ram <= 2) device.memory = 'low'
-      if (ram <= 4) device.memory = 'medium'
-
-      device.memory = 'high'       
-    }
-
-    const battery = await this.getBattery()
-
-    if (!!battery) {
-      device.battery = [
+      this._context.device.battery = [
         battery?.level,
         battery?.charging,
         battery?.chargingTime,
         battery?.dischargingTime
       ]
+    } else {
+      console.warn('[Glimpser] getBattery method is not supported in this browser.')
     }
+  }
 
-    const browser: ContextData['browser'] = {
-      language: n?.language ?? n?.languages?.[0],
-      legacy: this.isLegacyBrowser(),
-      name: this.browser,
-      onLine: n?.onLine
-    }
+  public async addUserData(): Promise<void> {
+    try {
+      const workerData = await this.getWorkerData()
 
-    if (!!n?.connection) {
-      browser.connection = [
-        n.connection?.effectiveType,
-        n.connection?.downlink,
-        n.connection?.rtt,
-        n.connection?.saveData
-      ]
-    }
-
-    const session = {
-      duration: p?.now,
-      startAt: p?.timeOrigin
-    }
-
-    const document = {
-      domain: l?.origin?.split('//')[1].split('/')[0],
-      referrer: d?.referrer,
-      title: d?.title,
-      viewing: d?.visibilityState === 'visible' && d?.hasFocus
-    }
-
-    const screen: ContextData['screen'] = {
-      height: [
-        s?.height,
-        s?.availHeight,
-        this.collect('outerHeight') as number,
-        this.collect('innerHeight') as number
-      ],
-      width: [
-        s?.width,
-        s?.availWidth,
-        this.collect('outerWidth') as number,
-        this.collect('innerWidth') as number
-      ]
-    }
-
-    switch (s.orientation) {
-      case 'landscape-primary':
-        screen.orientation = 1
-        break
-      case 'landscape-secondary':
-        screen.orientation = -1
-        break
-      case 'portrait-primary':
-        screen.orientation = 2
-        break
-      case 'portrait-secondary':
-        screen.orientation = -2
-    }
-
-    const data: ContextData = {
-      os,
-      device,
-      browser,
-      session,
-      document,
-      screen
-    }
-
-    const workerData = await this.getWorkerData()
-
-    if (!!workerData) {
-      data.user = {
-        city: workerData.cf?.city || workerData.headers?.['cf-ipcountry'],
-        continent: workerData.cf?.continent,
-        country: workerData.cf?.country,
-        ipAddress: workerData.headers?.['x-real-ip'] || workerData.headers?.['cf-connecting-ip'],
-        latitude: workerData.cf?.latitude,
-        longitude: workerData.cf?.longitude,
-        postalCode: workerData.cf?.postalCode,
-        region: workerData.cf?.region,
-        regionCode: workerData.cf?.regionCode,
-        timezone: workerData.cf?.timezone
+      if (!!workerData) {
+        this._context.user = {
+          city: workerData.cf?.city || workerData.headers?.['cf-ipcountry'],
+          continent: workerData.cf?.continent,
+          country: workerData.cf?.country,
+          ipAddress: workerData.headers?.['x-real-ip'] || workerData.headers?.['cf-connecting-ip'],
+          latitude: workerData.cf?.latitude,
+          longitude: workerData.cf?.longitude,
+          postalCode: workerData.cf?.postalCode,
+          region: workerData.cf?.region,
+          regionCode: workerData.cf?.regionCode,
+          timezone: workerData.cf?.timezone
+        }
       }
+    } catch (error) {
+      console.warn('[Glimpser] Failed to fetch user data.')
     }
+  }
 
-    return data
+  public refresh<K extends keyof ContextData>(key?: K): void {
+    if (!!key && key in this._context) {
+      this._context[key] = { ...this._context[key], ...this.getContext(key) }
+    } else {
+      this._context = { ...this._context, ...this.getContext() }
+    }
   }
 
   public toJSON() {
-    return this.collect()
+    return {
+      closed: this.collect('closed'),
+      devicePixelRatio: this.collect('devicePixelRatio'),
+      document: this.collect('document'),
+      innerHeight: this.collect('innerHeight'),
+      innerWidth: this.collect('innerWidth'),
+      isSecureContext: this.collect('isSecureContext'),
+      location: this.collect('location'),
+      name: this.collect('name'),
+      navigator: this.collect('navigator'),
+      outerHeight: this.collect('outerHeight'),
+      outerWidth: this.collect('outerWidth'),
+      performance: this.collect('performance'),
+      screen: this.collect('screen'),
+      scrollX: this.collect('scrollX'),
+      scrollY: this.collect('scrollY')
+    }
+  }
+
+  private getContext<K extends keyof ContextData>(key?: K): Readonly<ContextData | ContextData[K]> {
+    const d = this.collect('document')
+    const l = this.collect('location')
+    const n = this.collect('navigator')
+    const p = this.collect('performance')
+    const s = this.collect('screen')
+
+    const _os = (): ContextData['os'] => ({
+      name: this.os,
+      theme: this.window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    })
+
+    const _device = () => {
+      const deviceData: ContextData['device'] = {
+        type: this.device
+      }
+
+      if (!!n?.deviceMemory) {
+        const ram = n.deviceMemory
+
+        if (ram <= 0.5) deviceData.memory = 'very-low'
+        if (ram <= 2) deviceData.memory = 'low'
+        if (ram <= 4) deviceData.memory = 'medium'
+
+        deviceData.memory = 'high'       
+      }
+
+      return deviceData
+    }
+
+    const _browser = () => {
+      const browserData: ContextData['browser'] = {
+        language: n?.language ?? n?.languages?.[0],
+        legacy: this.isLegacyBrowser(),
+        name: this.browser,
+        onLine: n?.onLine
+      }
+
+      if (!!n?.connection) {
+        browserData.connection = [
+          n.connection?.effectiveType,
+          n.connection?.downlink,
+          n.connection?.rtt,
+          n.connection?.saveData
+        ]
+      }
+
+      return browserData
+    }
+
+    const _session = () => ({
+      duration: p?.now,
+      fingerprint: '',
+      origin: l?.origin?.split('//')[1],
+      startAt: p?.timeOrigin
+    })
+
+    const _document = () => ({
+      path: l?.origin ?? '' + l?.pathname ?? '',
+      referrer: d?.referrer,
+      title: d?.title,
+      viewing: d?.visibilityState === 'visible' && d?.hasFocus
+    })
+
+    const _screen = () => {
+      const screenData: ContextData['screen'] = {
+        height: [
+          s?.height,
+          s?.availHeight,
+          this.collect('outerHeight'),
+          this.collect('innerHeight')
+        ],
+        width: [
+          s?.width,
+          s?.availWidth,
+          this.collect('outerWidth'),
+          this.collect('innerWidth')
+        ]
+      }
+
+      switch (s.orientation) {
+        case 'landscape-primary':
+          screenData.orientation = 1
+          break
+        case 'landscape-secondary':
+          screenData.orientation = -1
+          break
+        case 'portrait-primary':
+          screenData.orientation = 2
+          break
+        case 'portrait-secondary':
+          screenData.orientation = -2
+      }
+
+      return screenData
+    }
+
+    const data: Partial<{ [K in keyof ContextData]: () => ContextData[K] }> = {
+      os: _os,
+      device: _device,
+      browser: _browser,
+      session: _session,
+      document: _document,
+      screen: _screen
+    }
+
+    if (!!key && key in data && typeof data[key] === 'function') {
+      return data[key]!() as ContextData[K]
+    }
+
+    return Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [k, v()])
+    ) as unknown as ContextData
   }
 
   private detectOs(): OsType {
@@ -365,37 +419,22 @@ export default class Glimpser {
   }
 
   private isLegacyBrowser(): boolean {
+    const w = this.window
+
     const tests: [string, boolean][] = [
-      ['fetch', 'fetch' in window],
-      ['Promise', 'Promise' in window],
-      ['IntersectionObserver', 'IntersectionObserver' in window],
-      ['ResizeObserver', 'ResizeObserver' in window],
-      ['customElements', 'customElements' in window],
-      ['Intl', 'Intl' in window],
-      ['URLSearchParams', 'URLSearchParams' in window],
-      ['CSS1Compat mode', document.compatMode === 'CSS1Compat']
+      ['fetch', 'fetch' in w],
+      ['Promise', 'Promise' in w],
+      ['IntersectionObserver', 'IntersectionObserver' in w],
+      ['ResizeObserver', 'ResizeObserver' in w],
+      ['customElements', 'customElements' in w],
+      ['Intl', 'Intl' in w],
+      ['URLSearchParams', 'URLSearchParams' in w],
+      ['CSS1Compat mode', w.document.compatMode === 'CSS1Compat']
     ]
 
     const failedTests = tests.filter(([_, passed]) => !passed)
 
     return failedTests.length >= 2
-  }
-
-  private async getBattery() {
-    if (typeof this.window.navigator.getBattery === 'function') {
-      const battery = await this.window.navigator?.getBattery()
-
-      return {
-        charging: battery?.charging,
-        chargingTime: battery?.chargingTime,
-        dischargingTime: battery?.dischargingTime,
-        level: battery?.level
-      }
-    } else {
-      console.warn('[Glimpser] getBattery method is not supported in this browser.')
-    }
-
-    return undefined
   }
 
   private async getWorkerData(): Promise<WorkerData | undefined> {
@@ -410,9 +449,7 @@ export default class Glimpser {
       
       return data
     } catch (error) {
-      console.warn('[Glimpser] Error fetching worker data.')
+      return undefined
     }
-
-    return undefined
   }
 }

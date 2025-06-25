@@ -22,6 +22,8 @@ export interface ContextData {
 
   session : {
     duration?: number
+    fingerprint?: string
+    origin?: string
     startAt?: number
   }
 
@@ -39,7 +41,7 @@ export interface ContextData {
   }
 
   document: {
-    domain?: string
+    path?: string
     referrer?: string
     title?: string
     viewing?: boolean
