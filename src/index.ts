@@ -1,3 +1,4 @@
+import { hashFingerprint } from './helpers/converters'
 import type { WindowData } from './types/window-data'
 import type {
   ContextData,
@@ -280,7 +281,7 @@ export default class Glimpser {
 
     const _session = () => ({
       duration: p?.now,
-      fingerprint: '',
+      fingerprint: this.generateFingerprint(),
       origin: l?.origin?.split('//')[1],
       startAt: p?.timeOrigin
     })
@@ -337,7 +338,7 @@ export default class Glimpser {
     if (!!key && key in data && typeof data[key] === 'function') {
       return data[key]!() as ContextData[K]
     }
-
+    
     return Object.fromEntries(
       Object.entries(data).map(([k, v]) => [k, v()])
     ) as unknown as ContextData
@@ -451,5 +452,37 @@ export default class Glimpser {
     } catch (error) {
       return undefined
     }
+  }
+
+  private generateFingerprint(): string {
+    const d = this.collect('document')
+    const l = this.collect('location')
+    const n = this.collect('navigator')
+    const s = this.collect('screen')
+
+    const rawFingerprint = [
+      n.platform,
+      n.language,
+      n.userAgent,
+      n.hardwareConcurrency,
+      n.maxTouchPoints,
+      n.cookieEnabled,
+      n.pdfViewerEnabled,
+      n.webdriver,
+      window.devicePixelRatio,
+      s.width,
+      s.height,
+      s.availWidth,
+      s.availHeight,
+      s.orientation || 'unknown',
+      l.origin?.replace(/^https?:\/\//, '') || '',
+      l.pathname || '',
+      d.referrer?.replace(/\/$/, '') || '',
+      d.title || '',
+      d.compatMode || '',
+      d.characterSet || ''
+    ].join('|')
+
+    return hashFingerprint(rawFingerprint)
   }
 }
