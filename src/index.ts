@@ -16,7 +16,9 @@ export default class Glimpser {
   private readonly browser: BrowserType
   private _context: ContextData
 
-  constructor() {
+  private warnEnabled: boolean
+
+  constructor(options: { warn?: boolean } = {}) {
     if (typeof window === 'undefined') {
       throw new Error('[Glimpser] Incompatible environment: "window" is not defined.')
     }
@@ -27,6 +29,8 @@ export default class Glimpser {
     this.device = this.detectDevice()
     this.browser = this.detectBrowser()
     this._context = this.getContext() as ContextData
+
+    this.warnEnabled = options.warn ?? true
   }
 
   get context(): Readonly<ContextData> {
@@ -99,13 +103,17 @@ export default class Glimpser {
           saveData: n.connection?.saveData
         }
       } else {
-        console.warn('[Glimpser] connection property is not supported in this browser.')
+        if (this.warnEnabled) {
+          console.warn('[Glimpser] connection property is not supported in this browser.')
+        }
       }
 
       if (typeof n.deviceMemory !== 'undefined') {
         navigatorData.deviceMemory = n.deviceMemory
       } else {
-        console.warn('[Glimpser] deviceMemory property is not supported in this browser.')
+        if (this.warnEnabled) {
+          console.warn('[Glimpser] deviceMemory property is not supported in this browser.')
+        }
       }
 
       if (typeof n.userAgentData !== 'undefined') {
@@ -115,7 +123,9 @@ export default class Glimpser {
           platform: n.userAgentData?.platform
         }
       } else {
-        console.warn('[Glimpser] userAgentData property is not supported in this browser.')
+        if (this.warnEnabled) {
+          console.warn('[Glimpser] userAgentData property is not supported in this browser.')
+        }
       }
 
       return navigatorData
@@ -174,7 +184,9 @@ export default class Glimpser {
         battery?.dischargingTime
       ]
     } else {
-      console.warn('[Glimpser] getBattery method is not supported in this browser.')
+      if (this.warnEnabled) {
+        console.warn('[Glimpser] getBattery method is not supported in this browser.')
+      }
     }
   }
 
@@ -197,7 +209,9 @@ export default class Glimpser {
         }
       }
     } catch (error) {
-      console.warn('[Glimpser] Failed to fetch user data.')
+      if (this.warnEnabled) {
+        console.warn('[Glimpser] Failed to fetch user data.')
+      }
     }
   }
 
