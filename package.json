@@ -1,6 +1,6 @@
 {
   "name": "glimpser",
-  "version": "0.0.5",
+  "version": "1.0.1",
   "description": "Lightweight browser environment inspector delivering raw or structured data effortlessly.",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

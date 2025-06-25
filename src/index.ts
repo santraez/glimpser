@@ -88,7 +88,6 @@ export default class Glimpser {
         maxTouchPoints: n?.maxTouchPoints,
         onLine: n?.onLine,
         pdfViewerEnabled: n?.pdfViewerEnabled,
-        platform: n?.platform,
         userActivation: n?.userActivation?.hasBeenActive,
         userAgent: n?.userAgent,
         vendor: n?.vendor,
@@ -361,27 +360,26 @@ export default class Glimpser {
   private detectOs(): OsType {
     const n = this.window.navigator
 
-    const platform = (n?.platform ?? '').toLowerCase()
     const ua = (n?.userAgent ?? '').toLowerCase()
     const uad = (n?.userAgentData?.platform ?? '').toLowerCase()
 
     const mtp = n?.maxTouchPoints ?? 0
 
-    const isWindows = uad.includes('windows') || ua.includes('windows') || platform.includes('win')
-    const isLinux = uad.includes('linux') || ua.includes('linux') || platform.includes('linux')
-    const isAndroid = uad.includes('android') || ua.includes('android') || platform.includes('android') && mtp > 0
-    const isChromeOs = uad.includes('cros') || ua.includes('cros') || platform.includes('cros')
-    const isMacOs = uad.includes('mac') || ua.includes('macintosh') || platform.includes('mac')
-    const isIpadOs = uad.includes('ipad') || ua.includes('ipad') || /ipad|mac/.test(platform) && mtp > 0
-    const isIos = uad.includes('iphone') || ua.includes('iphone') || /iphone|mac/.test(platform) && mtp > 0
-
-    if (isWindows) return 'windows'
-    if (isLinux) return 'linux'
-    if (isAndroid) return 'android'
-    if (isChromeOs) return 'chromeos'
-    if (isMacOs) return 'macos'
+    const isIpadOs = uad.includes('ipad') || ua.includes('ipad') && mtp > 0
+    const isIos = uad.includes('iphone') || ua.includes('iphone') && mtp > 0
+    const isMacOs = uad.includes('mac') || ua.includes('macintosh')
+    const isChromeOs = uad.includes('cros') || ua.includes('cros')
+    const isAndroid = uad.includes('android') || ua.includes('android') && mtp > 0
+    const isWindows = uad.includes('windows') || ua.includes('windows')
+    const isLinux = uad.includes('linux') || ua.includes('linux')
+    
     if (isIpadOs) return 'ipados'
     if (isIos) return 'ios'
+    if (isMacOs) return 'macos'
+    if (isChromeOs) return 'chromeos'
+    if (isAndroid) return 'android'
+    if (isWindows) return 'windows'
+    if (isLinux) return 'linux'
     
     return 'unknown'
   }
@@ -416,18 +414,18 @@ export default class Glimpser {
 
     const brands = (n?.userAgentData?.brands ?? []).map(b => b.brand).join('; ').toLowerCase()
 
-    const isFirefox = 'InstallTrigger' in w || ua.includes('firefox')
     const isSafari = /iphone|ipad|ipod/.test(ua) || vendor.includes('apple') && /macos|ios|ipados/.test(os)
-    const isEdge = brands.includes('microsoft') || ua.includes('edg/')
     const isOpera = 'opr' in w || brands.includes('opera') || ua.includes('opr/') || ua.includes('opera')
     const isBrave = typeof n?.brave?.isBrave === 'function' || brands.includes('brave')
+    const isEdge = brands.includes('microsoft') || ua.includes('edg/')
+    const isFirefox = 'InstallTrigger' in w || ua.includes('firefox')
     const isChrome = brands.includes('google') || 'chrome' in w || 'userAgentData' in n
 
-    if (isFirefox) return 'firefox'
     if (isSafari) return 'safari'
-    if (isEdge) return 'edge'
     if (isOpera) return 'opera'
     if (isBrave) return 'brave'
+    if (isEdge) return 'edge'
+    if (isFirefox) return 'firefox'
     if (isChrome) return 'chrome'
     
     return 'unknown'
@@ -475,7 +473,6 @@ export default class Glimpser {
     const s = this.collect('screen')
 
     const rawFingerprint = [
-      n.platform,
       n.language,
       n.userAgent,
       n.hardwareConcurrency,
@@ -483,7 +480,7 @@ export default class Glimpser {
       n.cookieEnabled,
       n.pdfViewerEnabled,
       n.webdriver,
-      window.devicePixelRatio,
+      this.collect('devicePixelRatio'),
       s.width,
       s.height,
       s.availWidth,
