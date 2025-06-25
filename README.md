@@ -1,0 +1,151 @@
+# Glimpser
+
+**Client-side context and environment collector for the modern web.**  
+Glimpser gathers detailed data from the browser, including OS, device, browser, session, screen, and user IP-based data—ready for analytics, logging, and adaptive UI logic.
+
+---
+
+## 🔧 Installation
+
+```bash
+npm install glimpser
+```
+
+---
+
+## 🚀 Quick Start
+
+```ts
+import Glimpser from 'glimpser'
+
+const client = new Glimpser()
+
+console.log(client.context)
+// → { os: { name: 'windows', theme: 'dark' }, device: { type: 'desktop', memory: 'high' }, ... }
+```
+
+---
+
+## ⚙️ Configuration
+
+```ts
+const client = new Glimpser({ warn: false })
+```
+
+| Option | Type    | Default | Description                                 |
+|--------|---------|---------|---------------------------------------------|
+| `warn` | boolean | `true`  | Show `console.warn` for unsupported props. |
+
+---
+
+## 📦 Features
+
+- Detect OS, browser, and device type
+- Measure screen size, orientation, DPI
+- Get document metadata (title, path, referrer, visibility)
+- Capture session data: origin, fingerprint, uptime
+- Detect legacy browsers
+- Fetch geolocation + IP data (optional)
+- Convert collected data to JSON
+
+---
+
+## 🧪 Examples
+
+### Collecting a specific value
+
+```ts
+const dpi = client.collect('devicePixelRatio')
+
+console.log(dpi) // → 1.25
+```
+
+---
+
+### Add battery data (async)
+
+```ts
+await client.addBatteryData()
+
+console.log(client.context.device.battery)
+// → [0.87, true, 0, 3600]
+```
+
+---
+
+### Add user IP & location (async)
+
+```ts
+await client.addUserData()
+
+console.log(client.context.user)
+// → { ipAddress, country, region, latitude, ... }
+```
+
+---
+
+### Export as plain JSON
+
+```ts
+const snapshot = client.toJSON()
+
+console.log(JSON.stringify(snapshot, null, 2))
+```
+
+---
+
+## 🌍 Data Structure Overview
+
+Example of `.context`:
+
+```json
+{
+  "os": {
+    "name": "windows",
+    "theme": "dark"
+  },
+  "device": {
+    "type": "desktop",
+    "memory": "high"
+  },
+  "browser": {
+    "name": "chrome",
+    "language": "en-US",
+    "legacy": false,
+    "onLine": true,
+    "connection": ["4g", 2.35, 150, false]
+  },
+  "session": {
+    "duration": 3582,
+    "startAt": 1719250372043,
+    "origin": "example.com",
+    "fingerprint": "a1b2c3d4..."
+  },
+  ...
+}
+```
+
+---
+
+## 🧠 Use Cases
+
+- Analytics & telemetry
+- Device-aware UI logic
+- Performance-based feature toggling
+- Bot/human heuristics
+- Contextual logging/debugging
+
+---
+
+## 🔄 Refreshing the Context
+
+Use `.refresh()` to manually update the context data at any time.  
+You can refresh the full context or a specific section:
+
+```ts
+client.refresh() // Updates the entire context
+
+client.refresh('browser') // Only updates the 'browser' section
+```
+
+This is useful when the user changes theme, resizes the window, changes connection, or when battery status or location info is updated asynchronously.
