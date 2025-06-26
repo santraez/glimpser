@@ -497,3 +497,23 @@ export default class Glimpser {
     return hashFingerprint(rawFingerprint)
   }
 }
+
+export type {
+  ContextData,
+  WorkerData,
+  BrowserType,
+  OsType,
+  DeviceType
+} from './types/context-data'
+
+export type {
+  WindowData,
+  DocumentData,
+  LocationData,
+  NavigatorData,
+  PerformanceData,
+  ScreenData,
+  Connection,
+  GetBattery,
+  UserAgentData
+} from './types/window-data'
