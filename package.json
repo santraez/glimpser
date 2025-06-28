@@ -1,6 +1,6 @@
 {
   "name": "glimpser",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Lightweight browser environment inspector delivering raw or structured data effortlessly.",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -49,7 +49,7 @@
   "bugs": {
     "url": "https://github.com/santraez/glimpser/issues"
   },
-  "homepage": "https://github.com/santraez/glimpser#readme",
+  "homepage": "https://glimpser.pages.dev",
   "devDependencies": {
     "esbuild": "0.25.5",
     "typescript": "5.8.3"
