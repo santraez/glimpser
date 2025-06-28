@@ -16,7 +16,7 @@ import { Country } from '@/components/items/country'
 import { IpAddress } from '@/components/items/ip-address'
 import { Geolocation } from '@/components/items/geolocation'
 import { City } from '@/components/items/city'
-import { Timezone } from '@/components/items/timezone'
+// import { Timezone } from '@/components/items/timezone'
 import { Viewing } from '@/components/items/viewing'
 import { Screen } from '@/components/items/screen'
 
@@ -35,7 +35,7 @@ export function GlimpserBox() {
   }, [])
 
   return (
-    <div className='w-xl h-xl bg-green-700 aspect-square grid grid-cols-5 gap-4 p-7 mx-auto'>
+    <div className='w-xl h-xl bg-zinc-700 aspect-square grid grid-cols-5 gap-4 p-7 mx-auto rounded-2xl'>
       <Os value={context?.os?.name} />
       <Theme value={context?.os?.theme} />
       <Battery value={context?.device?.battery} />
@@ -63,7 +63,7 @@ export function GlimpserBox() {
           regionCode: context?.user?.regionCode
         }}
       />
-      <Timezone value={context?.user?.timezone} />
+      {/* <Timezone value={context?.user?.timezone} /> */}
       <Viewing value={context?.document?.viewing} />
       <Screen
         value={{

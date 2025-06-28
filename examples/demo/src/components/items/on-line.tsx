@@ -11,9 +11,9 @@ export function OnLine({ value }: OnLineProps) {
   
   return (
     <ItemCard>
-      <pre>
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      <span className={`${value ? 'animate-pulse text-green-500' : 'text-slate-300'} text-lg`}>
+        &bull;
+      </span>
     </ItemCard>
   )
 }

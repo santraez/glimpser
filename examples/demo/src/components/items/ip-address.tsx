@@ -11,9 +11,7 @@ export function IpAddress({ value }: IpAddressProps) {
   
   return (
     <ItemCard>
-      <pre>
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      <span className='truncate'>{value}</span>
     </ItemCard>
   )
 }

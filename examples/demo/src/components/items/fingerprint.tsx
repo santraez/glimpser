@@ -11,9 +11,7 @@ export function Fingerprint({ value }: FingerprintProps) {
   
   return (
     <ItemCard>
-      <pre>
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      <span>{value}</span>
     </ItemCard>
   )
 }

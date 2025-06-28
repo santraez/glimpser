@@ -11,7 +11,15 @@ import '@/styles/global.css'
 		<meta name='generator' content={Astro.generator} />
 		<title>Glimpser</title>
 	</head>
-	<body class='bg-zinc-900 text-white'>
-    <GlimpserBox client:only='react' />
+	<body class='bg-zinc-900 text-white py-16'>
+    <h1 class='text-4xl font-bold text-center mb-8'>
+      Glimpser 👀
+    </h1>
+    <div class='w-xl h-xl aspect-square mx-auto'>
+      <GlimpserBox client:only='react' />
+    </div>
+    <main class='prose dark:prose-invert max-w-3xl mx-auto px-4 py-16'>
+      <slot />
+    </main>
 	</body>
 </html>

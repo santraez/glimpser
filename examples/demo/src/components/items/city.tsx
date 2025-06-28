@@ -13,12 +13,15 @@ export function City({ value }: CityProps) {
   if (!value.city && !value.postalCode && !value.region && !value.regionCode) {
     return null
   }
+
+  const { city, postalCode, region } = value
   
   return (
     <ItemCard>
-      <pre>
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      <div className='flex flex-col gap-1'>
+        <span>{city}, {region}</span>
+        <span>{postalCode}</span>
+      </div>
     </ItemCard>
   )
 }

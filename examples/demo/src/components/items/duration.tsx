@@ -1,3 +1,4 @@
+import { millisecondsToTime } from '@/helpers/milliseconds-to-time'
 import { ItemCard } from '@/components/item-card'
 
 interface DurationProps {
@@ -11,9 +12,7 @@ export function Duration({ value }: DurationProps) {
   
   return (
     <ItemCard>
-      <pre>
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      <span>{millisecondsToTime(value)}</span>
     </ItemCard>
   )
 }
